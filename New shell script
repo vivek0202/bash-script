@@ -1,0 +1,263 @@
+#!/usr/bin/bash
+
+# Set environment variables
+export PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:/usr/seos/bin:/bin:/usr/bin:/etc:/usr/sbin:/usr/ucb:${PATH}
+export BASE_DIRECTORY=/provco/stage
+
+# Declare variables
+declare userid=""
+declare password=""
+declare app_name="Provco_PC"
+declare app_version=""
+declare Bind_Skip=""
+declare region=""
+declare lregion=""
+declare sqlbindcleanarg="yes"
+declare downloadarg="yes"
+declare invalidargs=""
+declare jobname=""
+declare -i secondHost=0
+declare secondIp=""
+declare npdsvr="t ?? 1pb7ev?01?"
+declare LOG=/provco/stage/logs/${app_name}.$(date +%Y%m%d_%H%M%S).log
+
+# Function to display usage
+display_usage() {
+    echo "Usage: -user USERID_FOR_DOWNLOAD_FROM_ARTIFACTORY"
+    echo "       -password PASSWORD_OF_USERID"
+    echo "       -app_version VERSION_OF_APPLOCATION_TO_DEPLOY"
+    echo "       -region REGION_NAME"
+    echo "       -bind_skip yes/no DEFAULT no"
+    echo "       -sqljbindclean yes/no DEFAULT no"
+    echo "       -download yes/no DEFAULT yes"
+}
+
+# Parse arguments
+while [ $# -gt 0 ]; do
+    case $1 in
+        -user) shift; userid=$1 ;;
+        -password) shift; password=$1 ;;
+        -app_version) shift; app_version=$1 ;;
+        -bind_skip) shift; Bind_Skip=$1 ;;
+        -region) shift; region=$(echo $1 | tr '[:lower:]' '[:upper:]'); lregion=$(echo $1 | tr '[:upper:]' '[:lower:]') ;;
+        -sqljbindclean) shift; sqlbindcleanarg=$1 ;;
+        -download) shift; downloadarg=$1 ;;
+        -job_name) shift; jobname=$1 ;;
+        -secondip) shift; secondIp=$1; secondHost=1 ;;
+        *) invalidargs="$invalidargs $1" ;;
+    esac
+    shift
+done
+
+# Log start
+echo "And away we go... $(date)" | tee -a ${LOG}
+
+# Check for invalid arguments
+if [ -n "${invalidargs}" ]; then
+    echo "Ignoring arguments: ${invalidargs}" | tee -a ${LOG}
+fi
+
+# Validate required arguments
+if [ -z "${userid}" ] || [ -z "${password}" ] || [ -z "${app_version}" ] || [ -z "${region}" ]; then
+    display_usage | tee -a ${LOG}
+    exit 99
+fi
+
+# Set environment based on hostname
+HOSTNAME=$(hostname | awk -F"." '{print $1}')
+case "${HOSTNAME}" in
+    b7efdpa8)
+        export BEA_HOME=/apps/opt/weblogic/weblogic121mp3
+        export ANT_HOME=${BEA_HOME}/oracle_common/modules/org.apache.ant_1.9.2
+        export JAVA_JDK_VERSION=jdk180_371_64
+        ;;
+    tdclpb7eva001|tdclpb7eva013)
+        export BEA_HOME=/apps/opt/weblogic/weblogic122mp4
+        export ANT_HOME=${BEA_HOME}/oracle_common/modules/thirdparty/org.apache.ant/1.10.5.0.0/apache-ant-1.10.5
+        export JAVA_JDK_VERSION=jdk180_341_64
+        ;;
+    *)
+        export BEA_HOME=/apps/opt/weblogic/weblogic122mp4
+        export ANT_HOME=${BEA_HOME}/oracle_common/modules/thirdparty/org.apache.ant/1.10.5.0.0/apache-ant-1.10.5
+        export JAVA_JDK_VERSION=jdk180_371_64
+        ;;
+esac
+export WL_HOME=${BEA_HOME}/wlserver
+export JAVA_HOME=/apps/opt/${JAVA_JDK_VERSION}
+export PATH=${JAVA_HOME}/bin:${ANT_HOME}/bin:${PATH}
+
+# Source DB2 binding info
+. /provco/.EnvConfig/.db2_binding_info
+
+# Log deployment details
+echo "Appdeployer: ${app_name} App version: ${app_version} Region: ${region} Userid: ${userid} Bind: ${Bind_Skip} SqljBindClean: ${sqlbindcleanarg} Download: ${downloadarg} JenkinsJobName: ${jobname}" | tee -a ${LOG}
+
+# Check for active deployment
+wait_for_active_deployment() {
+    local waittimes=30
+    local counter=0
+    while [ -e /provco/stage/active_deployment_running ] && [ ${counter} -le ${waittimes} ]; do
+        ((counter++))
+        echo "Waiting for /provco/stage/active_deployment_running to NOT exist... ${counter} of ${waittimes} - $(date)" | tee -a ${LOG}
+        sleep 10
+    done
+    if [ ${counter} -gt ${waittimes} ]; then
+        echo "Timed out waiting on /provco/stage/active_deployment_running to NOT exist!! - $(date)" | tee -a ${LOG}
+        exit 1
+    fi
+}
+
+wait_for_active_deployment
+
+# Create active deployment file
+echo "Creating /provco/stage/active_deployment_running -- $(date)" | tee -a ${LOG}
+touch /provco/stage/active_deployment_running
+
+# Set deployment variables
+BIND_REGION=${region}
+KEEP_REGION=${region}
+if [ "${region}" == "GV" ]; then
+    DEPLOY_REGION="GVE"
+else
+    DEPLOY_REGION="${region}NAP"
+fi
+
+export BIND_USER=${db2id}
+export BIND_PASS=${db2pass}
+
+SQLJ_BIND_CLEAN="nosqljbindclean"
+DOWNLOAD="download"
+[ "${sqlbindcleanarg}" == "yes" ] && SQLJ_BIND_CLEAN="sqljbindclean"
+[ "${downloadarg}" == "no" ] && DOWNLOAD="nodownload"
+[ "${Bind_Skip}" != "yes" ] && BIND_SKIP="yes"
+
+PROD_HOME=/provco/stage/provco_pc
+APPVER_DIR=${PROD_HOME}/${app_version}
+REGION_DIR=${APPVER_DIR}/${region}
+
+# Log deployment variables
+echo "BIND_REGION: ${BIND_REGION}
+DEPLOY_REGION: ${DEPLOY_REGION}
+BIND_USER: ${BIND_USER}
+SQLJ_BIND_CLEAN: ${SQLJ_BIND_CLEAN}
+DOWNLOAD: ${DOWNLOAD}
+APPVERSION: ${app_version}
+BIND_SKIP: ${BIND_SKIP}
+REGION: ${region}
+REGION_DIR: ${REGION_DIR}
+APPVER_DIR: ${APPVER_DIR}" | tee -a ${LOG}
+
+# Create directories
+mkdir -vp ${APPVER_DIR} ${REGION_DIR} | tee -a ${LOG}
+
+# Download and extract archive
+cd ${APPVER_DIR}
+ARCHIVE_FILE=PROVCO_PC.tar
+if [ "${DOWNLOAD}" == "download" ]; then
+    [ -e "${ARCHIVE_FILE}" ] && rm -fv "${ARCHIVE_FILE}" | tee -a ${LOG}
+    wget --no-check-certificate --no-verbose --user=${userid} --password=${password} "https://oneartifactory.verizon.com/artifactory/B7EV_Provisioning_Controller/PROVCOPC/${app_version}/${ARCHIVE_FILE}" | tee -a ${LOG}
+    wget --no-check-certificate --no-verbose --user=${userid} --password=${password} "https://oneartifactoryci.verizon.com/artifactory/B7EV_Provisioning_Controller/PROVCOPC/${app_version}/${ARCHIVE_FILE}" | tee -a ${LOG}
+fi
+
+cd ${REGION_DIR}
+if [ "${DOWNLOAD}" == "download" ] || [ "${DOWNLOAD}" == "unpack" ]; then
+    echo "Extracting tar file ${APPVER_DIR}/${ARCHIVE_FILE}" | tee -a ${LOG}
+    tar -xf ${APPVER_DIR}/${ARCHIVE_FILE} | tee -a ${LOG}
+fi
+
+# Run SQLJ Bind Clean
+if [ "${SQLJ_BIND_CLEAN}" == "sqljbindclean" ]; then
+    echo "Running SQLJ Bind Clean" | tee -a ${LOG}
+    rm -vf ${APPVER_DIR}/bind.configuration | tee -a ${LOG}
+    for project in PRISH ProvCtl; do
+        echo "Cleaning ${project}" | tee -a ${LOG}
+        rm -rf ${APPVER_DIR}/${project} | tee -a ${LOG}
+    done
+fi
+
+# Packaging start
+PACKAGE_DIR="${REGION_DIR}/package"
+if [ ! -d "${PACKAGE_DIR}" ]; then
+    echo "Package directory does not exist, expected to find ${PACKAGE_DIR}" | tee -a ${LOG}
+    rm -v /provco/stage/active_deployment_running | tee -a ${LOG}
+    exit 1
+fi
+
+cd ${PACKAGE_DIR}
+if [ "${BIND_REGION}" == "GV" ] && ([ "${DOWNLOAD}" == "download" ] || [ "${DOWNLOAD}" == "unpack" ]); then
+    echo "Updating the bind.config for GVE..." | tee -a ${LOG}
+    cp -v bind.config bind.config.orig | tee -a ${LOG}
+    sed -i 's/PD-/Xx-/g' bind.config | tee -a ${LOG}
+    sed -i 's/GV-/PD-/g' bind.config | tee -a ${LOG}
+fi
+
+if [ "${BIND_REGION}" == "GV" ]; then
+    echo "Setting the BIND_REGION to PD" | tee -a ${LOG}
+    BIND_REGION="PD"
+fi
+
+# Run Ant build
+ant -f build-staging.xml \
+    -Dsqlj.bind.history.dir=${APPVER_DIR} \
+    -Ddeploy_region=${DEPLOY_REGION} \
+    -Dbind_region=${BIND_REGION} \
+    -Dbind_user=${BIND_USER} \
+    -Dbind_pass=${BIND_PASS} \
+    -Dwl.home=${WL_HOME} \
+    -Dsqljclean=${SQLJ_BIND_CLEAN} \
+    -Dskip.sqjl.binds=${BIND_SKIP} \
+    | tee -a ${LOG}
+
+# Rsync deployments to servers
+if [ ${secondHost} -eq 0 ]; then
+    case ${KEEP_REGION} in
+        AD|AE|AF|AH)
+            . /provco/deployments/timebeanhosts
+            TOSERV=${aenap_managed_host_2}
+            ;;
+        PD)
+            TOSERV="tdclpb7eva002.verizon.com tpalpb7eva001.verizon.com tpalpb7eva005.verizon.com tdclpb7eva013.verizon.com tdclpb7eva014.verizon.com tpalpb7eva017.verizon.com tpalpb7eva015.verizon.com"
+            ;;
+        GV)
+            TOSERV=""
+            ;;
+        *)
+            echo "${region} is not valid"
+            rm -v /provco/stage/active_deployment_running | tee -a ${LOG}
+            exit 1
+            ;;
+    esac
+else
+    TOSERV=${secondIp}
+fi
+
+# Rsync files to servers
+for server in ${TOSERV}; do
+    echo "RSYNC deployments to ${server}... $(date)" | tee -a ${LOG}
+    rsync -va --delete /provco/deployments/scripts/ ${server}:/provco/deployments/scripts/ | tee -a ${LOG}
+    rsync -va --delete /provco/deployments/HealthCheck/ ${server}:/provco/deployments/HealthCheck/ | tee -a ${LOG}
+    rsync -va --delete /provco/deployments/Logging/ ${server}:/provco/deployments/Logging/ | tee -a ${LOG}
+    rsync -va --delete /provco/deployments/Management/ ${server}:/provco/deployments/Management/ | tee -a ${LOG}
+    rsync -va --delete /provco/deployments/OaTSS/ ${server}:/provco/deployments/OaTSS/ | tee -a ${LOG}
+    rsync -va --delete /provco/deployments/NSS/ ${server}:/provco/deployments/NSS/ | tee -a ${LOG}
+    rsync -va --delete /provco/deployments/ProvCtlTimer/ ${server}:/provco/deployments/ProvCtlTimer/ | tee -a ${LOG}
+    rsync -va --delete /provco/deployments/ProvisionController/ ${server}:/provco/deployments/ProvisionController/ | tee -a ${LOG}
+    rsync -va --delete /provco/deployments/sqlj-PRISM/ ${server}:/provco/deployments/sqlj-PRISM/ | tee -a ${LOG}
+    rsync -va --delete --exclude '*-HealthCheck.txt' /provco/ProvisionController/apps/config/ ${server}:/provco/ProvisionController/apps/config/ | tee -a ${LOG}
+done
+
+# Log deployment completion
+echo "Deploy of ProvCo_PC Complete: $(date)" | tee -a ${LOG}
+
+# Update deployment version
+grep -v "^${app_name}" /provco/deployments/cur_deployment_version.txt > /provco/deployments/cur_deployment_version.tmp | tee -a ${LOG}
+echo "${app_name} ${app_version} $(date +%Y%m%d_%H%M%S)" >> /provco/deployments/cur_deployment_version.tmp | tee -a ${LOG}
+cp -v /provco/deployments/cur_deployment_version.tmp /provco/deployments/cur_deployment_version.txt | tee -a ${LOG}
+rm -v /provco/deployments/cur_deployment_version.tmp | tee -a ${LOG}
+
+# Remove active deployment file
+rm -v /provco/stage/active_deployment_running | tee -a ${LOG}
+
+# Clean up old deployments and logs
+find /provco/stage/provco_pc -maxdepth 1 -mindepth 1 -type d -user provco -mtime +60 -exec rm -rf {} \; | tee -a ${LOG}
+find /provco/stage/logs -name "${app_name}.*" -type f -user provco -mtime +60 -exec rm -v {} \; | tee -a ${LOG}
