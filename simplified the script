@@ -1,0 +1,57 @@
+#!/usr/bin/bash
+
+# Function to log messages
+log_message() {
+    echo "$1" | tee -a ${LOG}
+}
+
+# Function to check for ebiz in application.properties
+check_ebiz() {
+    if [[ ${HOSTNAME} == ${pdsvr} ]]; then
+        log_message "Checking for ebiz in ${PACKAGE_DIR}/Configuration/dist/application.properties"
+        if grep -q "ebiz" ${PACKAGE_DIR}/Configuration/dist/application.properties | grep -vq "MQ.Local"; then
+            log_message "ebiz found in ${PACKAGE_DIR}/Configuration/dist/application.properties failing !!!"
+            rm -v /provco/stage/active_deployment_running | tee -a ${LOG}
+            exit 99
+        fi
+    fi
+}
+
+# Function to copy files and log
+copy_and_log() {
+    local src=$1
+    local dest=$2
+    local log_file=$3
+
+    log_message "Copying ${src} to ${dest}"
+    cp -pv ${src} ${dest} | tee -a ${LOG}
+    local rc=${PIPESTATUS[0]}
+    if [ ${rc} -ne 0 ]; then
+        rm -v /provco/stage/active_deployment_running | tee -a ${LOG}
+        exit ${rc}
+    fi
+
+    log_message "${log_file} - $(date) ${app_version} Deploy to Region: ${DEPLOY_REGION}" >> ${log_file}
+}
+
+# Set variables
+LOG=/provco/stage/logs/${app_name}.$(date +%Y%m%d_%H%M%S).log
+PACKAGE_DIR="/path/to/package_dir"
+HOSTNAME=$(hostname)
+pdsvr="pdsvr_hostname"
+app_version="1.0.0"
+DEPLOY_REGION="region_name"
+
+# Check for ebiz in application.properties
+check_ebiz
+
+# Copy files and log
+copy_and_log "${PACKAGE_DIR}/HealthCheck.ear" "/provco/deployments/HealthCheck/" "/provco/deployments/HealthCheck/PC_Deployment.log"
+copy_and_log "${PACKAGE_DIR}/Logging.ear" "/provco/deployments/Logging/" "/provco/deployments/Logging/PC_Deployment.log"
+copy_and_log "${PACKAGE_DIR}/Management.ear" "/provco/deployments/Management/" "/provco/deployments/Management/PC_Deployment.log"
+copy_and_log "${PACKAGE_DIR}/OaTSS.ear" "/provco/deployments/OaTSS/" "/provco/deployments/OaTSS/PC_Deployment.log"
+copy_and_log "${PACKAGE_DIR}/NSS.ear" "/provco/deployments/NSS/" "/provco/deployments/NSS/PC_Deployment.log"
+copy_and_log "${PACKAGE_DIR}/ProvCtlTimer.ear" "/provco/deployments/ProvCtlTimer/" "/provco/deployments/ProvCtlTimer/PC_Deployment.log"
+
+# Remove active deployment file
+rm -v /provco/stage/active_deployment_running | tee -a ${LOG}
