@@ -1,0 +1,125 @@
+---
+- name: Deploy Provco_PC Application
+  hosts: all
+  become: yes
+  vars:
+    app_name: "Provco_PC"
+    app_version: ""
+    Bind_Skip: ""
+    region: ""
+    lregion: ""
+    sqlbindcleanarg: "yes"
+    downloadarg: "yes"
+    secondHost: 0
+    secondIp: ""
+    BASE_DIRECTORY: "/provco/stage"
+    LOG: "/provco/stage/logs/{{ app_name }}.{{ ansible_date_time.iso8601 }}.log"
+    PROD_HOME: "/provco/stage/provco_pc"
+    APPVER_DIR: "{{ PROD_HOME }}/{{ app_version }}"
+    REGION_DIR: "{{ APPVER_DIR }}/{{ region }}"
+    ARCHIVE_FILE: "PROVCO_PC.tar"
+    PACKAGE_DIR: "{{ REGION_DIR }}/package"
+    TOSERV: ""
+  tasks:
+    - name: Set environment variables
+      set_fact:
+        ansible_env:
+          PATH: "/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:/usr/seos/bin:/bin:/usr/bin:/etc:/usr/sbin:/usr/ucb:{{ ansible_env.PATH }}"
+
+    - name: Rsync deployments to servers
+      block:
+        - name: Determine TOSERV based on region
+          set_fact:
+            TOSERV: |
+              {% if secondHost == 0 %}
+                {% if KEEP_REGION in ['AD', 'AE', 'AF', 'AH'] %}
+                  {{ lookup('file', '/provco/deployments/timebeanhosts') }}
+                  {{ aenap_managed_host_2 }}
+                {% elif KEEP_REGION == 'PD' %}
+                  "tdclpb7eva002.verizon.com tpalpb7eva001.verizon.com tpalpb7eva005.verizon.com tdclpb7eva013.verizon.com tdclpb7eva014.verizon.com tpalpb7eva017.verizon.com tpalpb7eva015.verizon.com"
+                {% elif KEEP_REGION == 'GV' %}
+                  ""
+                {% else %}
+                  "invalid"
+                {% endif %}
+              {% else %}
+                {{ secondIp }}
+              {% endif %}
+          when: secondHost == 0
+
+        - name: Fail if region is invalid
+          fail:
+            msg: "{{ region }} is not valid"
+          when: TOSERV == "invalid"
+
+        - name: Rsync files to servers
+          synchronize:
+            src: "{{ item.src }}"
+            dest: "{{ item.dest }}"
+            delete: yes
+          with_items:
+            - { src: "/provco/deployments/scripts/", dest: "{{ item }}:/provco/deployments/scripts/" }
+            - { src: "/provco/deployments/HealthCheck/", dest: "{{ item }}:/provco/deployments/HealthCheck/" }
+            - { src: "/provco/deployments/Logging/", dest: "{{ item }}:/provco/deployments/Logging/" }
+            - { src: "/provco/deployments/Management/", dest: "{{ item }}:/provco/deployments/Management/" }
+            - { src: "/provco/deployments/OaTSS/", dest: "{{ item }}:/provco/deployments/OaTSS/" }
+            - { src: "/provco/deployments/NSS/", dest: "{{ item }}:/provco/deployments/NSS/" }
+            - { src: "/provco/deployments/ProvCtlTimer/", dest: "{{ item }}:/provco/deployments/ProvCtlTimer/" }
+            - { src: "/provco/deployments/ProvisionController/", dest: "{{ item }}:/provco/deployments/ProvisionController/" }
+            - { src: "/provco/deployments/sqlj-PRISM/", dest: "{{ item }}:/provco/deployments/sqlj-PRISM/" }
+            - { src: "/provco/ProvisionController/apps/config/", dest: "{{ item }}:/provco/ProvisionController/apps/config/", exclude: "*-HealthCheck.txt" }
+          loop: "{{ TOSERV.split() }}"
+
+    - name: Log deployment completion
+      debug:
+        msg: "Deploy of ProvCo_PC Complete: {{ ansible_date_time.iso8601 }}"
+
+    - name: Update deployment version
+      block:
+        - name: Remove old deployment version
+          lineinfile:
+            path: /provco/deployments/cur_deployment_version.txt
+            state: absent
+            regexp: "^{{ app_name }}"
+
+        - name: Add new deployment version
+          lineinfile:
+            path: /provco/deployments/cur_deployment_version.txt
+            line: "{{ app_name }} {{ app_version }} {{ ansible_date_time.iso8601 }}"
+
+    - name: Remove active deployment file
+      file:
+        path: /provco/stage/active_deployment_running
+        state: absent
+
+    - name: Clean up old deployments and logs
+      block:
+        - name: Remove old deployments
+          find:
+            paths: /provco/stage/provco_pc
+            age: 60d
+            recurse: yes
+            patterns: "*"
+            file_type: directory
+            register: old_deployments
+
+        - name: Remove old deployment directories
+          file:
+            path: "{{ item.path }}"
+            state: absent
+          with_items: "{{ old_deployments.files }}"
+
+        - name: Remove old logs
+          find:
+            paths: /provco/stage/logs
+            age: 60d
+            recurse: yes
+            patterns: "{{ app_name }}.*"
+            file_type: file
+            register: old_logs
+
+        - name: Remove old log files
+          file:
+            path: "{{ item.path }}"
+            state: absent
+          with_items: "{{ old_logs.files }}"
