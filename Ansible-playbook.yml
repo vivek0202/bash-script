@@ -1,0 +1,123 @@
+---
+- name: Deploy Provco_PC Application
+  hosts: all
+  become: yes
+  vars:
+    app_name: "Provco_PC"
+    app_version: ""
+    Bind_Skip: ""
+    region: ""
+    lregion: ""
+    sqlbindcleanarg: "yes"
+    downloadarg: "yes"
+    secondHost: 0
+    secondIp: ""
+    npdsvr: "t ?? 1pb7ev?01?"
+    BASE_DIRECTORY: "/provco/stage"
+    BEA_HOME: "/apps/opt/weblogic/weblogic122mp4"
+    WL_HOME: "{{ BEA_HOME }}/wlserver"
+    ANT_HOME: "{{ BEA_HOME }}/oracle_common/modules/thirdparty/org.apache.ant/1.10.5.0.0/apache-ant-1.10.5"
+    JAVA_JDK_VERSION: "jdk180_371_64"
+    JAVA_HOME: "/apps/opt/{{ JAVA_JDK_VERSION }}"
+    PATH: "{{ JAVA_HOME }}/bin:{{ ANT_HOME }}/bin:{{ ansible_env.PATH }}"
+    LOG: "/provco/stage/logs/{{ app_name }}.{{ ansible_date_time.iso8601 }}.log"
+    BIND_USER: "{{ lookup('env', 'db2id') }}"
+    BIND_PASS: "{{ lookup('env', 'db2pass') }}"
+    PROD_HOME: "/provco/stage/provco_pc"
+    APPVER_DIR: "{{ PROD_HOME }}/{{ app_version }}"
+    REGION_DIR: "{{ APPVER_DIR }}/{{ region }}"
+    ARCHIVE_FILE: "PROVCO_PC.tar"
+    PACKAGE_DIR: "{{ REGION_DIR }}/package"
+    TOSERV: ""
+  tasks:
+    - name: Set environment variables
+      set_fact:
+        ansible_env:
+          PATH: "{{ PATH }}"
+
+    - name: Display usage
+      debug:
+        msg: |
+          Usage: -user USERID_FOR_DOWNLOAD_FROM_ARTIFACTORY
+                 -password PASSWORD_OF_USERID
+                 -app_version VERSION_OF_APPLOCATION_TO_DEPLOY
+                 -region REGION_NAME
+                 -bind_skip yes/no DEFAULT no
+                 -sqljbindclean yes/no DEFAULT no
+                 -download yes/no DEFAULT yes
+
+    - name: Check for invalid arguments
+      fail:
+        msg: "Ignoring arguments: {{ invalidargs }}"
+      when: invalidargs != ""
+
+    - name: Validate required arguments
+      fail:
+        msg: "Missing required arguments"
+      when: userid == "" or password == "" or app_version == "" or region == ""
+
+    - name: Create directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      with_items:
+        - "{{ APPVER_DIR }}"
+        - "{{ REGION_DIR }}"
+
+    - name: Download archive file
+      get_url:
+        url: "https://oneartifactory.verizon.com/artifactory/B7EV_Provisioning_Controller/PROVCOPC/{{ app_version }}/{{ ARCHIVE_FILE }}"
+        dest: "{{ APPVER_DIR }}/{{ ARCHIVE_FILE }}"
+        force: yes
+      when: downloadarg == "yes"
+
+    - name: Extract archive file
+      unarchive:
+        src: "{{ APPVER_DIR }}/{{ ARCHIVE_FILE }}"
+        dest: "{{ REGION_DIR }}"
+      when: downloadarg == "yes"
+
+    - name: Run SQLJ Bind Clean
+      shell: |
+        rm -vf {{ APPVER_DIR }}/bind.configuration
+        for project in PRISH ProvCtl; do
+          rm -rf {{ APPVER_DIR }}/$project
+        done
+      when: sqlbindcleanarg == "yes"
+
+    - name: Copy configuration files
+      copy:
+        src: "{{ PACKAGE_DIR }}/Configuration/dist/"
+        dest: "/provco/ProvisionController/apps/config/"
+        remote_src: yes
+
+    - name: Run LDAP and IASA scripts
+      shell: |
+        /provco/scripts/ldap_script.sh
+        /provco/scripts/IASA_DB_script.sh
+      when: BIND_REGION == "PD"
+
+    - name: Rsync deployments to servers
+      synchronize:
+        src: "/provco/deployments/"
+        dest: "{{ item }}"
+        delete: yes
+      with_items: "{{ TOSERV.split() }}"
+      when: TOSERV != ""
+
+    - name: Clean up old deployments
+      find:
+        paths:
+          - "/provco/stage/provco_pc"
+          - "/provco/stage/logs"
+        age: 60d
+        recurse: yes
+        patterns: "{{ app_name }}.*"
+      register: old_files
+
+    - name: Remove old files
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      with_items: "{{ old_files.files }}"
