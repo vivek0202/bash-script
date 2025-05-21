@@ -1,0 +1,45 @@
+#!/bin/bash
+
+LOG_DIR="/provco/OneNetwork/scripts/log"
+SERVICES_FILE="/provco/OneNetwork/scripts/Services"
+RESTART_SCRIPT="/provco/OneNetwork/scripts/Restart.sh"
+ERROR_PATTERN="Connection reset by peer"
+EMAIL_RECIPIENT="your_email@domain.com"  # Replace with your email
+
+# Get current date for log
+DATE=$(date +%Y%m%d)
+REPORT="/tmp/service_restart_report_$DATE.log"
+> "$REPORT"
+
+# Validate all required files
+if [[ ! -f "$SERVICES_FILE" || ! -x "$RESTART_SCRIPT" ]]; then
+    echo "Missing Services file or Restart script. Aborting." | tee -a "$REPORT"
+    exit 1
+fi
+
+# Read services one by one
+while read -r SERVICE; do
+    [[ -z "$SERVICE" ]] && continue
+
+    LOG_FILE="$LOG_DIR/${SERVICE}.log"
+    
+    if [[ -f "$LOG_FILE" ]]; then
+        if grep -q "$ERROR_PATTERN" "$LOG_FILE"; then
+            echo "$(date): Found error in $SERVICE, restarting..." | tee -a "$REPORT"
+            "$RESTART_SCRIPT" "$SERVICE" >> "$REPORT" 2>&1
+            echo "$(date): Restarted $SERVICE" | tee -a "$REPORT"
+        else
+            echo "$(date): No error found for $SERVICE" >> "$REPORT"
+        fi
+    else
+        echo "$(date): Log file not found for $SERVICE" >> "$REPORT"
+    fi
+done < "$SERVICES_FILE"
+
+# Send email notification
+if grep -q "Restarted" "$REPORT"; then
+    mail -s "Service Restart Alert - Errors Detected" "$EMAIL_RECIPIENT" < "$REPORT"
+fi
+
+# Cleanup
+rm -f "$REPORT"
