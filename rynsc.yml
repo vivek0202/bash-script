@@ -1,0 +1,22 @@
+---
+- name: Trigger rsync transfer script asynchronously
+  hosts: target_servers
+  become: yes
+  tasks:
+    - name: Ensure script is present
+      copy:
+        src: ./rsync_transfer_notify.sh
+        dest: /opt/scripts/rsync_transfer_notify.sh
+        mode: '0755'
+
+    - name: Run rsync transfer script in background (asynchronous)
+      shell: nohup /opt/scripts/rsync_transfer_notify.sh > /opt/scripts/rsync.log 2>&1 &
+      async: 3600   # Max wait time (seconds)
+      poll: 0       # Don't wait — fire and forget
+
+    - name: Wait for the rsync job to complete
+      wait_for:
+        path: /opt/scripts/rsync.log
+        search_regex: "Rsync file transfers have completed successfully"
+        delay: 10
+        timeout: 3600
