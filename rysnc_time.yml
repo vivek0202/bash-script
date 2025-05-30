@@ -1,0 +1,31 @@
+---
+- name: Run rsync transfer script detached with debug log
+  hosts: target_servers
+  become: yes
+  tasks:
+    - name: Copy the rsync script to the target
+      copy:
+        src: ./rsync_transfer_notify.sh
+        dest: /opt/scripts/rsync_transfer_notify.sh
+        mode: '0755'
+
+    - name: Start the script in background using nohup
+      shell: |
+        nohup /opt/scripts/rsync_transfer_notify.sh > /dev/null 2>&1 &
+        echo "Started rsync job in background"
+      args:
+        executable: /bin/bash
+
+    - name: (Optional) Wait for debug log to be created
+      wait_for:
+        path: /opt/scripts/rsync_debug.log
+        state: present
+        timeout: 30
+
+    - name: (Optional) Show log output (if needed for Jenkins console)
+      shell: tail -n 20 /opt/scripts/rsync_debug.log
+      register: log_tail
+      ignore_errors: true
+
+    - debug:
+        msg: "{{ log_tail.stdout_lines | default([]) }}"
