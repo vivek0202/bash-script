@@ -1,7 +1,7 @@
 #!/bin/bash
 
-LOG_DIR="/provco/OneNetwork/scripts/logs"
-SERVICES_FILE="/provco/OneNetwork/scripts/Services"
+LOG_DIR="/opt/appstage/service-ops/scripts/logs"
+SERVICES_FILE="/opt/appstage/service-ops/scripts/Services"
 DATE_YYYYMMDD=$(date +%Y%m%d)
 DATE_DASHED=$(date +%Y-%m-%d)
 

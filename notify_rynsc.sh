@@ -6,7 +6,7 @@ exec > >(tee -a "$LOGFILE") 2>&1
 echo "[$(date)] Starting rsync transfer"
 
 # Example rsync
-rsync -avz -e ssh vzpipview@tdclpalrba002.verizon.com:/dataserver/lqextracts/ vzpipview@tpalpalrba006.verizon.com:/dataserver/lqextracts/
+rsync -avz -e ssh deploy_user@src-server-01.example.internal:/dataserver/lqextracts/ deploy_user@dst-server-01.example.internal:/dataserver/lqextracts/
 
 echo "[$(date)] Rsync Completed"
 

@@ -1,9 +1,9 @@
 #!/bin/bash
 
-LOG_DIR="/provco/OneNetwork/scripts/logs"
-SERVICES_FILE="/provco/OneNetwork/scripts/Services"
-RESTART_SCRIPT="/provco/OneNetwork/scripts/Restart.sh"
-EMAIL="vivek9linux@gmail.com"
+LOG_DIR="/opt/appstage/service-ops/scripts/logs"
+SERVICES_FILE="/opt/appstage/service-ops/scripts/Services"
+RESTART_SCRIPT="/opt/appstage/service-ops/scripts/Restart.sh"
+EMAIL="your-email@example.com"
 TEMP_REPORT="/tmp/service_error_report_$(date +%Y%m%d%H%M).log"
 ERROR_PATTERN="java.io.IOException: Connection reset by peer"
 DATE_YYYYMMDD=$(date +%Y%m%d)

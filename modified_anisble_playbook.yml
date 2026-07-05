@@ -1,9 +1,9 @@
 ---
-- name: Deploy Provco_PC Application
+- name: Deploy AppDeploy Application
   hosts: all
   become: yes
   vars:
-    app_name: "Provco_PC"
+    app_name: "AppDeploy"
     app_version: ""
     Bind_Skip: ""
     region: ""
@@ -12,12 +12,12 @@
     downloadarg: "yes"
     secondHost: 0
     secondIp: ""
-    BASE_DIRECTORY: "/provco/stage"
-    LOG: "/provco/stage/logs/{{ app_name }}.{{ ansible_date_time.iso8601 }}.log"
-    PROD_HOME: "/provco/stage/provco_pc"
+    BASE_DIRECTORY: "/opt/appstage/stage"
+    LOG: "/opt/appstage/stage/logs/{{ app_name }}.{{ ansible_date_time.iso8601 }}.log"
+    PROD_HOME: "/opt/appstage/stage/opt/appstage_pc"
     APPVER_DIR: "{{ PROD_HOME }}/{{ app_version }}"
     REGION_DIR: "{{ APPVER_DIR }}/{{ region }}"
-    ARCHIVE_FILE: "PROVCO_PC.tar"
+    ARCHIVE_FILE: "APPDEPLOY.tar"
     PACKAGE_DIR: "{{ REGION_DIR }}/package"
     TOSERV: ""
   tasks:
@@ -33,10 +33,10 @@
             TOSERV: |
               {% if secondHost == 0 %}
                 {% if KEEP_REGION in ['AD', 'AE', 'AF', 'AH'] %}
-                  {{ lookup('file', '/provco/deployments/timebeanhosts') }}
+                  {{ lookup('file', '/opt/appstage/deployments/timebeanhosts') }}
                   {{ aenap_managed_host_2 }}
                 {% elif KEEP_REGION == 'PD' %}
-                  "tdclpb7eva002.verizon.com tpalpb7eva001.verizon.com tpalpb7eva005.verizon.com tdclpb7eva013.verizon.com tdclpb7eva014.verizon.com tpalpb7eva017.verizon.com tpalpb7eva015.verizon.com"
+                  "app-server-01.example.internal app-server-02.example.internal app-server-03.example.internal app-server-04.example.internal app-server-05.example.internal app-server-06.example.internal app-server-07.example.internal"
                 {% elif KEEP_REGION == 'GV' %}
                   ""
                 {% else %}
@@ -58,45 +58,45 @@
             dest: "{{ item.dest }}"
             delete: yes
           with_items:
-            - { src: "/provco/deployments/scripts/", dest: "{{ item }}:/provco/deployments/scripts/" }
-            - { src: "/provco/deployments/HealthCheck/", dest: "{{ item }}:/provco/deployments/HealthCheck/" }
-            - { src: "/provco/deployments/Logging/", dest: "{{ item }}:/provco/deployments/Logging/" }
-            - { src: "/provco/deployments/Management/", dest: "{{ item }}:/provco/deployments/Management/" }
-            - { src: "/provco/deployments/OaTSS/", dest: "{{ item }}:/provco/deployments/OaTSS/" }
-            - { src: "/provco/deployments/NSS/", dest: "{{ item }}:/provco/deployments/NSS/" }
-            - { src: "/provco/deployments/ProvCtlTimer/", dest: "{{ item }}:/provco/deployments/ProvCtlTimer/" }
-            - { src: "/provco/deployments/ProvisionController/", dest: "{{ item }}:/provco/deployments/ProvisionController/" }
-            - { src: "/provco/deployments/sqlj-PRISM/", dest: "{{ item }}:/provco/deployments/sqlj-PRISM/" }
-            - { src: "/provco/ProvisionController/apps/config/", dest: "{{ item }}:/provco/ProvisionController/apps/config/", exclude: "*-HealthCheck.txt" }
+            - { src: "/opt/appstage/deployments/scripts/", dest: "{{ item }}:/opt/appstage/deployments/scripts/" }
+            - { src: "/opt/appstage/deployments/HealthCheck/", dest: "{{ item }}:/opt/appstage/deployments/HealthCheck/" }
+            - { src: "/opt/appstage/deployments/Logging/", dest: "{{ item }}:/opt/appstage/deployments/Logging/" }
+            - { src: "/opt/appstage/deployments/Management/", dest: "{{ item }}:/opt/appstage/deployments/Management/" }
+            - { src: "/opt/appstage/deployments/OaTSS/", dest: "{{ item }}:/opt/appstage/deployments/OaTSS/" }
+            - { src: "/opt/appstage/deployments/NSS/", dest: "{{ item }}:/opt/appstage/deployments/NSS/" }
+            - { src: "/opt/appstage/deployments/ProvCtlTimer/", dest: "{{ item }}:/opt/appstage/deployments/ProvCtlTimer/" }
+            - { src: "/opt/appstage/deployments/ProvisionController/", dest: "{{ item }}:/opt/appstage/deployments/ProvisionController/" }
+            - { src: "/opt/appstage/deployments/sqlj-PRISM/", dest: "{{ item }}:/opt/appstage/deployments/sqlj-PRISM/" }
+            - { src: "/opt/appstage/AppController/apps/config/", dest: "{{ item }}:/opt/appstage/AppController/apps/config/", exclude: "*-HealthCheck.txt" }
           loop: "{{ TOSERV.split() }}"
 
     - name: Log deployment completion
       debug:
-        msg: "Deploy of ProvCo_PC Complete: {{ ansible_date_time.iso8601 }}"
+        msg: "Deploy of AppDeploy Complete: {{ ansible_date_time.iso8601 }}"
 
     - name: Update deployment version
       block:
         - name: Remove old deployment version
           lineinfile:
-            path: /provco/deployments/cur_deployment_version.txt
+            path: /opt/appstage/deployments/cur_deployment_version.txt
             state: absent
             regexp: "^{{ app_name }}"
 
         - name: Add new deployment version
           lineinfile:
-            path: /provco/deployments/cur_deployment_version.txt
+            path: /opt/appstage/deployments/cur_deployment_version.txt
             line: "{{ app_name }} {{ app_version }} {{ ansible_date_time.iso8601 }}"
 
     - name: Remove active deployment file
       file:
-        path: /provco/stage/active_deployment_running
+        path: /opt/appstage/stage/active_deployment_running
         state: absent
 
     - name: Clean up old deployments and logs
       block:
         - name: Remove old deployments
           find:
-            paths: /provco/stage/provco_pc
+            paths: /opt/appstage/stage/opt/appstage_pc
             age: 60d
             recurse: yes
             patterns: "*"
@@ -111,7 +111,7 @@
 
         - name: Remove old logs
           find:
-            paths: /provco/stage/logs
+            paths: /opt/appstage/stage/logs
             age: 60d
             recurse: yes
             patterns: "{{ app_name }}.*"

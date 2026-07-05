@@ -1,0 +1,40 @@
+Ansible Play book
+
+
+
+Story - 
+
+User inputs devices, partition, service group of POLARIS.
+Query token API and use auth token to get the state devices.
+Now we have POLARIS devices and its states.
+
+
+Example case -
+
+2 POLARIS devices: Box1 and Box2 state are enabled in POLARIS. ←  Remember this memory.
+
+What is the next step??
+
+We need TITAN device names.
+
+User inputs devices, partition, service group of TITAN.
+Query token API and use auth token to get the state devices.
+Now we have TITAN devices and its states.
+
+2 TITAN devices: Box3 and Box4 state are disabled in TITAN. ←  Remember this memory.
+
+Now our task is to enable TITAN because its disabled <– and then after successfully enabling TITAN, we have to disable POLARIS.
+
+
+Now, I need to add a task to the playbook where the response for the devices that user entered, we need to save the device name and its state (enabled/disabled) in memory.. Then we need to take users input again for TITAN devices, once user inputs the devices,parition, service group, do the token and get devices task again and get the device list and its state and its memory. Then based on the device state of POLARIS and TITAN, add below cases to playbook, 
+Use cases:
+1. If POLARIS devices are enabled and TITAN devices are disabled, now enable TITAN device using new API (add TBD to API task for now, hardcode something for now to test the script) and then disable POLARIS devices.
+2. If POLARIS devices are enabled and ONLY TITAN devices are enabled, now disable PLOARIS device using new API (add TBD to task for now) and leave TITAN as it is.
+3. If POLARIS devices are disabled and ONLY TITAN devices are enabled, now enable PLOARIS device using new API (add TBD to task for now) and then disable TITAN.
+
+ofcourse ask for confirmation yes/no showing the change that is going to perform and then complete the state.
+
+
+
+
+

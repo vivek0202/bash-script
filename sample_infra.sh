@@ -1,10 +1,10 @@
 #!/bin/bash
 
 SERVICE_NAME="infra-prov-gateway"
-LOG_FILE="/provco/OneNetwork/scripts/log/${SERVICE_NAME}_2025-05-21.log"
+LOG_FILE="/opt/appstage/service-ops/scripts/log/${SERVICE_NAME}_2025-05-21.log"
 ERROR_PATTERN="Connection reset by peer"
 EMAIL_TO="your.email@domain.com"
-RESTART_SCRIPT="/provco/OneNetwork/scripts/Restart.sh"
+RESTART_SCRIPT="/opt/appstage/service-ops/scripts/Restart.sh"
 TEMP_REPORT="/tmp/${SERVICE_NAME}_alert_$(date +%Y%m%d%H%M%S).log"
 
 # Check for error in log file

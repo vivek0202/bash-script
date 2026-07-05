@@ -8,8 +8,8 @@ LOG_FILE="/tmp/rsync_transfer.log"
 > "$LOG_FILE"  # Clear previous log
 
 # Common variables
-SRC_HOST="vzpipview@tdclpalrba002.verizon.com"
-DST_HOST="vzpipview@tpalpalrba006.verizon.com"
+SRC_HOST="deploy_user@src-server-01.example.internal"
+DST_HOST="deploy_user@dst-server-01.example.internal"
 
 # Directories to sync (source_path destination_path)
 declare -A SYNC_PATHS=(

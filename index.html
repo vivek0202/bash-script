@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vivek Vasam — Platform &amp; DevOps Engineering</title>
+<meta name="description" content="Automation and platform engineering portfolio — rsync pipelines, service monitoring, Ansible deployment tooling.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #14171a;
+    --panel: #1b1f23;
+    --panel-raised: #21262b;
+    --hairline: #2e343a;
+    --amber: #e8a33d;
+    --amber-dim: #a97a34;
+    --teal: #4fa8a0;
+    --text: #e9e5dc;
+    --text-dim: #9aa0a6;
+    --text-faint: #656b71;
+    --red: #d9704f;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    --font-sans: 'Inter', -apple-system, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--amber); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .wrap {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ---------- NAV ---------- */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: rgba(20, 23, 26, 0.92);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--hairline);
+  }
+  nav .wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+  }
+  .nav-brand {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.02em;
+    color: var(--text);
+  }
+  .nav-brand span { color: var(--amber); }
+  .nav-links {
+    display: flex;
+    gap: 28px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .nav-links a {
+    color: var(--text-dim);
+    font-size: 13px;
+    font-family: var(--font-mono);
+  }
+  .nav-links a:hover { color: var(--amber); text-decoration: none; }
+
+  @media (max-width: 640px) {
+    .nav-links { display: none; }
+  }
+
+  /* ---------- HERO ---------- */
+  header.hero {
+    padding: 88px 0 64px;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .terminal {
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px -30px rgba(0,0,0,0.6);
+  }
+  .terminal-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--panel-raised);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot.r { background: #d9704f; }
+  .dot.y { background: #e8a33d; }
+  .dot.g { background: #4fa8a0; }
+  .terminal-title {
+    margin-left: 8px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+  .terminal-body {
+    padding: 22px 24px 30px;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    min-height: 220px;
+  }
+  .terminal-body .line { margin: 0 0 10px; white-space: pre-wrap; }
+  .prompt-sym { color: var(--teal); }
+  .cmd { color: var(--text); }
+  .out { color: var(--text-dim); }
+  .out strong { color: var(--amber); font-weight: 500; }
+  .cursor {
+    display: inline-block;
+    width: 8px;
+    height: 16px;
+    background: var(--amber);
+    vertical-align: -3px;
+    animation: blink 1s step-start infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  h1.name {
+    font-family: var(--font-mono);
+    font-size: clamp(28px, 5vw, 40px);
+    font-weight: 700;
+    margin: 32px 0 6px;
+    letter-spacing: -0.01em;
+  }
+  .role-line {
+    font-size: 16px;
+    color: var(--text-dim);
+    margin: 0 0 20px;
+  }
+  .badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .badge {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--amber-dim);
+    border: 1px solid var(--hairline);
+    background: var(--panel);
+    padding: 5px 10px;
+    border-radius: 4px;
+  }
+
+  /* ---------- SECTIONS ---------- */
+  section { padding: 56px 0; border-bottom: 1px solid var(--hairline); }
+  section:last-of-type { border-bottom: none; }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--teal);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 0 0 10px;
+  }
+  h2.section-title {
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0 0 28px;
+    color: var(--text);
+  }
+  .lede {
+    color: var(--text-dim);
+    max-width: 620px;
+    margin: -18px 0 28px;
+  }
+
+  /* ---------- LOG CARDS (projects) ---------- */
+  .log-card {
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-left: 3px solid var(--tagcolor, var(--amber));
+    border-radius: 6px;
+    padding: 20px 22px;
+    margin-bottom: 16px;
+  }
+  .log-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .tag {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    padding: 2px 7px;
+    border-radius: 3px;
+  }
+  .tag.action { background: rgba(232,163,61,0.15); color: var(--amber); }
+  .tag.ok { background: rgba(79,168,160,0.15); color: var(--teal); }
+  .tag.alert { background: rgba(217,112,79,0.15); color: var(--red); }
+  .log-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .log-desc {
+    color: var(--text-dim);
+    font-size: 14.5px;
+    margin: 6px 0 12px;
+  }
+  .stack-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .chip {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-faint);
+    border: 1px solid var(--hairline);
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .log-link {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+  }
+
+  /* ---------- STACK GRID ---------- */
+  .stack-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+  }
+  .stack-group {
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: 6px;
+    padding: 16px 18px;
+  }
+  .stack-group h3 {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--teal);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 10px;
+  }
+  .stack-group ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 13.5px;
+    color: var(--text-dim);
+  }
+  .stack-group li { padding: 3px 0; }
+
+  /* ---------- CONTACT ---------- */
+  .contact-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 6px;
+  }
+  .contact-btn {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    border: 1px solid var(--hairline);
+    padding: 10px 16px;
+    border-radius: 6px;
+    color: var(--text);
+  }
+  .contact-btn:hover {
+    border-color: var(--amber-dim);
+    color: var(--amber);
+    text-decoration: none;
+  }
+
+  footer {
+    padding: 28px 0 60px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cursor { animation: none; }
+    html { scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <div class="nav-brand">vivek<span>@</span>platform</div>
+    <ul class="nav-links">
+      <li><a href="#about">about</a></li>
+      <li><a href="#projects">projects</a></li>
+      <li><a href="#stack">stack</a></li>
+      <li><a href="#contact">contact</a></li>
+    </ul>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="terminal">
+      <div class="terminal-bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="terminal-title">session — bash</span>
+      </div>
+      <div class="terminal-body" id="termBody"></div>
+    </div>
+
+    <h1 class="name">Vivek Vasam</h1>
+    <p class="role-line">Senior DevOps &amp; Cloud Platform Engineer — Tampa, FL</p>
+    <div class="badge-row">
+      <span class="badge">Kubernetes / OpenShift</span>
+      <span class="badge">AWS · Azure</span>
+      <span class="badge">GitOps</span>
+      <span class="badge">Ansible</span>
+      <span class="badge">Observability</span>
+    </div>
+  </div>
+</header>
+
+<section id="about">
+  <div class="wrap">
+    <p class="eyebrow">[ info ]</p>
+    <h2 class="section-title">About</h2>
+    <p class="lede" style="margin-top:-10px;">
+      10+ years building and operating infrastructure — from Linux administration in regulated
+      financial environments to cloud-native Kubernetes platforms at scale. This site walks through
+      a set of automation scripts I've written for production operations: data sync pipelines,
+      service health monitoring, and deployment tooling. Real problems, sanitized for public view.
+    </p>
+  </div>
+</section>
+
+<section id="projects">
+  <div class="wrap">
+    <p class="eyebrow">[ projects ]</p>
+    <h2 class="section-title">Automation &amp; tooling</h2>
+
+    <div class="log-card" style="--tagcolor: var(--amber);">
+      <div class="log-head">
+        <span class="tag action">ACTION</span>
+        <span class="log-title">Cross-host data sync with alerting</span>
+      </div>
+      <p class="log-desc">
+        A set of rsync-based pipelines for keeping application data directories consistent across
+        paired servers, with per-path exclusion rules, structured logging, and email notification
+        on success or failure. Iterated across several versions — from a single hardcoded script to
+        a parameterized, reusable version that takes source, destination, and notification target
+        as arguments.
+      </p>
+      <div class="stack-row">
+        <span class="chip">bash</span>
+        <span class="chip">rsync</span>
+        <span class="chip">cron</span>
+        <span class="chip">mailx</span>
+      </div>
+      <a class="log-link" href="https://github.com/vivek0202/bash-script" target="_blank" rel="noopener">view source →</a>
+    </div>
+
+    <div class="log-card" style="--tagcolor: var(--red);">
+      <div class="log-head">
+        <span class="tag alert">ALERT</span>
+        <span class="log-title">Service log monitoring &amp; auto-restart</span>
+      </div>
+      <p class="log-desc">
+        Log-pattern watchers that scan a defined set of services for known failure signatures
+        (connection resets, broken pipes, timeouts), generate a structured incident report, trigger
+        an automatic restart, and email an alert — closing the loop between detection and remediation
+        without a human in the middle for known-good failure modes.
+      </p>
+      <div class="stack-row">
+        <span class="chip">bash</span>
+        <span class="chip">grep / find</span>
+        <span class="chip">log parsing</span>
+        <span class="chip">alerting</span>
+      </div>
+      <a class="log-link" href="https://github.com/vivek0202/bash-script" target="_blank" rel="noopener">view source →</a>
+    </div>
+
+    <div class="log-card" style="--tagcolor: var(--teal);">
+      <div class="log-head">
+        <span class="tag ok">OK</span>
+        <span class="log-title">Ansible-driven application deployment</span>
+      </div>
+      <p class="log-desc">
+        A deployment playbook that syncs release packages and config to a set of target hosts based
+        on region, rotates the previous release for rollback, updates a version manifest, and cleans
+        up deployments and logs past a retention window — a self-contained release workflow for a
+        multi-region application footprint.
+      </p>
+      <div class="stack-row">
+        <span class="chip">Ansible</span>
+        <span class="chip">Jinja2</span>
+        <span class="chip">synchronize module</span>
+      </div>
+      <a class="log-link" href="https://github.com/vivek0202/bash-script" target="_blank" rel="noopener">view source →</a>
+    </div>
+
+    <div class="log-card" style="--tagcolor: var(--amber);">
+      <div class="log-head">
+        <span class="tag action">ACTION</span>
+        <span class="log-title">WebLogic JMS queue maintenance</span>
+      </div>
+      <p class="log-desc">
+        A WLST (Jython) utility that connects to a WebLogic admin server, walks every JMS server and
+        destination across the domain, and clears stuck messages from queues with a pending backlog —
+        the kind of maintenance task that's easy to forget and painful to do by hand across a large
+        domain.
+      </p>
+      <div class="stack-row">
+        <span class="chip">Jython / WLST</span>
+        <span class="chip">WebLogic</span>
+        <span class="chip">JMS</span>
+      </div>
+      <a class="log-link" href="https://github.com/vivek0202/bash-script" target="_blank" rel="noopener">view source →</a>
+    </div>
+
+  </div>
+</section>
+
+<section id="stack">
+  <div class="wrap">
+    <p class="eyebrow">[ stack ]</p>
+    <h2 class="section-title">Core toolset</h2>
+    <div class="stack-grid">
+      <div class="stack-group">
+        <h3>Platforms</h3>
+        <ul><li>Kubernetes / OpenShift</li><li>AWS</li><li>Azure</li></ul>
+      </div>
+      <div class="stack-group">
+        <h3>GitOps &amp; delivery</h3>
+        <ul><li>ArgoCD / FluxCD</li><li>Terraform</li><li>CI/CD pipelines</li></ul>
+      </div>
+      <div class="stack-group">
+        <h3>Observability</h3>
+        <ul><li>Prometheus / Grafana</li><li>Loki / Tempo</li></ul>
+      </div>
+      <div class="stack-group">
+        <h3>Security &amp; mesh</h3>
+        <ul><li>DevSecOps tooling</li><li>Istio</li><li>HashiCorp Vault</li></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="contact">
+  <div class="wrap">
+    <p class="eyebrow">[ contact ]</p>
+    <h2 class="section-title">Get in touch</h2>
+    <p class="lede" style="margin-top:-10px;">Open to senior platform engineering and DevOps roles.</p>
+    <div class="contact-row">
+      <a class="contact-btn" href="mailto:your.email@example.com">email</a>
+      <a class="contact-btn" href="https://github.com/vivek0202" target="_blank" rel="noopener">github</a>
+      <a class="contact-btn" href="#">linkedin</a>
+      <a class="contact-btn" href="#">resume.pdf</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    built with bash, rsync, and a stubborn amount of logging.
+  </div>
+</footer>
+
+<script>
+(function () {
+  var body = document.getElementById('termBody');
+  var script = [
+    { type: 'cmd', text: '$ whoami' },
+    { type: 'out', text: 'vivek vasam — senior devops & platform engineer' },
+    { type: 'cmd', text: '$ cat about.txt' },
+    { type: 'out', text: '10+ years automating infrastructure: Kubernetes, OpenShift,\nAWS/Azure, GitOps, observability, and everything that keeps\nprod quiet at 3am.' },
+    { type: 'cmd', text: '$ ls projects/' },
+    { type: 'out', text: 'rsync-pipelines/  service-monitoring/  ansible-deploy/  jms-tools/' }
+  ];
+
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (reduceMotion) {
+    script.forEach(function (line) {
+      var el = document.createElement('p');
+      el.className = 'line ' + (line.type === 'cmd' ? 'cmd' : 'out');
+      el.textContent = line.text;
+      body.appendChild(el);
+    });
+    return;
+  }
+
+  var lineIndex = 0;
+  var charIndex = 0;
+  var currentEl = null;
+
+  function typeNext() {
+    if (lineIndex >= script.length) {
+      var cursorEl = document.createElement('span');
+      cursorEl.className = 'cursor';
+      body.lastChild.appendChild(cursorEl);
+      return;
+    }
+    var line = script[lineIndex];
+    if (charIndex === 0) {
+      currentEl = document.createElement('p');
+      currentEl.className = 'line ' + (line.type === 'cmd' ? 'cmd' : 'out');
+      if (line.type === 'cmd') {
+        var promptSpan = document.createElement('span');
+        promptSpan.className = 'prompt-sym';
+        currentEl.appendChild(document.createTextNode(''));
+      }
+      body.appendChild(currentEl);
+    }
+
+    if (line.type === 'out') {
+      currentEl.textContent = line.text;
+      lineIndex++;
+      charIndex = 0;
+      setTimeout(typeNext, 260);
+      return;
+    }
+
+    charIndex++;
+    currentEl.textContent = line.text.slice(0, charIndex);
+    if (charIndex < line.text.length) {
+      setTimeout(typeNext, 22);
+    } else {
+      lineIndex++;
+      charIndex = 0;
+      setTimeout(typeNext, 200);
+    }
+  }
+
+  typeNext();
+})();
+</script>
+
+</body>
+</html>
